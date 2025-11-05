@@ -17,8 +17,12 @@ Route::prefix('auth')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
 
+    // me route
+    Route::get('auth/me', [AuthController::class, 'me']);
+
     Route::get('profile', [AuthController::class, 'profile']);
-    Route::post('logout', [AuthController::class, 'logout']);
+    Route::post('update-profile', [AuthController::class, 'updateProfile']);
+    Route::post('auth/logout', [AuthController::class, 'logout']);
     // roles and permissions
     // Roles
     Route::apiResource('roles', RoleController::class)->except(['create', 'edit']);
