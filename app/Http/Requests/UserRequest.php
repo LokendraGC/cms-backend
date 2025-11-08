@@ -21,12 +21,25 @@ class UserRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'name' => 'required|string|min:4|max:50',
-            'email' => 'required|email|unique:users,email,' . $this->user()->id,
-            'password' => 'nullable|string|min:6',
-            'avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'role' => 'required|string|exists:roles,name',
+        $userId = $this->route('user') ?? $this->route('id');
+
+        $rules = [
+            'name' => 'required|string|max:255',
+            'role' => 'required|string',
+            'avatar' => 'nullable|file|image|max:2048',
         ];
+
+        // Email rules
+        if ($userId) {
+            // Update - email is required but can be the same as current
+            $rules['email'] = "required|email|unique:users,email,{$userId}";
+            $rules['password'] = 'nullable|min:6';
+        } else {
+            // Create - email must be unique
+            $rules['email'] = 'required|email|unique:users,email';
+            $rules['password'] = 'required|min:6';
+        }
+
+        return $rules;
     }
 }

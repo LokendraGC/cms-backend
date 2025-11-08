@@ -2,10 +2,11 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PermissionController;
-use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Spatie\Permission\Middleware\RoleMiddleware;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -26,7 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
 
     // Roles
-    Route::apiResource('roles', RoleController::class)->except(['create', 'edit']);
+    Route::apiResource('roles', RolesController::class)->except(['create', 'edit']);
 
     // Permissions
     Route::get('/permissions', [PermissionController::class, 'index']);
@@ -34,6 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-Route::middleware(['auth:sanctum', 'role:Super Admin'])->group(function () {
-    Route::apiResource('users', UserController::class);
-});
+Route::middleware(['auth:sanctum', RoleMiddleware::class . ':Super Admin'])
+    ->group(function () {
+        Route::apiResource('users', UserController::class);
+    });

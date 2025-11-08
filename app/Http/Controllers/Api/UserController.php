@@ -17,7 +17,6 @@ class UserController extends Controller
     public function __construct(ResponseService $response_service)
     {
         $this->response_service = $response_service;
-        $this->middleware(['auth:sanctum', 'role:Super Admin']);
     }
 
     /**
@@ -60,17 +59,17 @@ class UserController extends Controller
         try {
             $validated = $request->validated();
 
-            $path = null;
-
             if ($request->hasFile('avatar')) {
                 $path = $request->file('avatar')->store('avatars', 'public');
+                $validated['avatar'] = $path;
             }
+
 
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
-                'avatar' => $path
+                'avatar' => $validated['avatar'] ?? null,
             ]);
 
             if (!empty($validated['role'])) {
@@ -155,9 +154,10 @@ class UserController extends Controller
             $user->name = $validated['name'] ?? $user->name;
             $user->email = $validated['email'] ?? $user->email;
 
-            if (filled($validated['password'])) {
+            if (!empty($validated['password'])) {
                 $user->password = Hash::make($validated['password']);
             }
+
 
             $user->save();
 
