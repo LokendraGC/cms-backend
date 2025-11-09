@@ -64,7 +64,6 @@ class UserController extends Controller
                 $validated['avatar'] = $path;
             }
 
-
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -142,6 +141,26 @@ class UserController extends Controller
             $user = User::findOrFail($id);
             $validated = $request->validated();
 
+            // Verify old password if new password is provided
+            if (!empty($validated['password'])) {
+                if (empty($validated['old_password'])) {
+                    return $this->response_service->errorMessage(
+                        message: 'Old password is required to set a new password',
+                        code: 422
+                    );
+                }
+
+                if (!Hash::check($validated['old_password'], $user->password)) {
+                    return $this->response_service->errorMessage(
+                        message: 'The provided old password is incorrect',
+                        code: 422
+                    );
+                }
+
+                $user->password = Hash::make($validated['password']);
+            }
+
+            // Handle avatar
             if ($request->hasFile('avatar')) {
                 if ($user->avatar && \Storage::exists($user->avatar)) {
                     \Storage::delete($user->avatar);
@@ -153,25 +172,16 @@ class UserController extends Controller
 
             $user->name = $validated['name'] ?? $user->name;
             $user->email = $validated['email'] ?? $user->email;
-
-            if (!empty($validated['password'])) {
-                $user->password = Hash::make($validated['password']);
-            }
-
-
             $user->save();
 
             if (!empty($validated['role'])) {
                 $user->syncRoles([$validated['role']]);
             }
 
-
             return $this->response_service->successMessage(
-
                 data: ['user' => $user->fresh()->load('roles')],
                 message: 'User Updated successfully',
                 code: 200
-
             );
         } catch (\Exception $e) {
             return $this->response_service->errorMessage(

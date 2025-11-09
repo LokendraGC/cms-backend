@@ -166,16 +166,35 @@ class AuthController extends Controller
             if (!empty($validated['password'])) {
                 $user->password = Hash::make($validated['password']);
             }
-            
+
             if ($request->hasFile('avatar')) {
                 if ($user->avatar && \Storage::exists($user->avatar)) {
                     \Storage::delete($user->avatar);
+                }
+
+                if (!empty($validated['password'])) {
+                    if (empty($validated['old_password'])) {
+                        return $this->response_service->errorMessage(
+                            message: 'Old password is required to set a new password.',
+                            code: 422
+                        );
+                    }
+
+                    if (!Hash::check($validated['old_password'], $user->password)) {
+                        return $this->response_service->errorMessage(
+                            message: 'Old password is incorrect.',
+                            code: 422
+                        );
+                    }
+
+                    $user->password = Hash::make($validated['password']);
                 }
 
                 // Store new avatar
                 $path = $request->file('avatar')->store('avatars', 'public');
                 $user->avatar = $path;
             }
+
 
             $user->save();
 

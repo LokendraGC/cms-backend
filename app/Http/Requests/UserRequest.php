@@ -29,17 +29,31 @@ class UserRequest extends FormRequest
             'avatar' => 'nullable|file|image|max:2048',
         ];
 
-        // Email rules
         if ($userId) {
-            // Update - email is required but can be the same as current
             $rules['email'] = "required|email|unique:users,email,{$userId}";
-            $rules['password'] = 'nullable|min:6';
+
+            // Only require old_password when password is provided
+            if ($this->has('password') && !empty($this->password)) {
+                $rules['old_password'] = 'required';
+                $rules['password'] = 'required|min:6';
+            } else {
+                $rules['password'] = 'nullable|min:6';
+            }
         } else {
-            // Create - email must be unique
             $rules['email'] = 'required|email|unique:users,email';
             $rules['password'] = 'required|min:6';
         }
 
         return $rules;
+    }
+
+    // Add custom validation messages (optional but recommended)
+    public function messages(): array
+    {
+        return [
+            'old_password.required' => 'The old password is required when changing password.',
+            'old_password.required_with' => 'The old password is required when setting a new password.',
+            'password.confirmed' => 'Password confirmation does not match.',
+        ];
     }
 }
