@@ -150,58 +150,62 @@ class AuthController extends Controller
     public function updateProfile(UpdateProfileRequest $request)
     {
         try {
-
             $user = auth('sanctum')->user();
 
             if (!$user) {
                 return $this->response_service->errorMessage(
-                    message: 'Unauthorize',
+                    message: 'Unauthorized',
                     code: 401
                 );
             }
+
             $validated = $request->validated();
+
+            // ✅ Basic info update
             $user->name = $validated['name'] ?? $user->name;
             $user->email = $validated['email'] ?? $user->email;
 
-            if (!empty($validated['password'])) {
-                $user->password = Hash::make($validated['password']);
+            // ✅ Remove avatar if requested
+            if ($request->has('remove_avatar') && $request->remove_avatar == '1') {
+                if ($user->avatar && \Storage::disk('public')->exists($user->avatar)) {
+                    \Storage::disk('public')->delete($user->avatar);
+                }
+                $user->avatar = null;
             }
 
+            // ✅ Handle new avatar upload
             if ($request->hasFile('avatar')) {
-                if ($user->avatar && \Storage::exists($user->avatar)) {
-                    \Storage::delete($user->avatar);
+                if ($user->avatar && \Storage::disk('public')->exists($user->avatar)) {
+                    \Storage::disk('public')->delete($user->avatar);
                 }
 
-                if (!empty($validated['password'])) {
-                    if (empty($validated['old_password'])) {
-                        return $this->response_service->errorMessage(
-                            message: 'Old password is required to set a new password.',
-                            code: 422
-                        );
-                    }
-
-                    if (!Hash::check($validated['old_password'], $user->password)) {
-                        return $this->response_service->errorMessage(
-                            message: 'Old password is incorrect.',
-                            code: 422
-                        );
-                    }
-
-                    $user->password = Hash::make($validated['password']);
-                }
-
-                // Store new avatar
                 $path = $request->file('avatar')->store('avatars', 'public');
                 $user->avatar = $path;
             }
 
+            // ✅ Handle password change (only if provided)
+            if (!empty($validated['password'])) {
+                if (empty($validated['old_password'])) {
+                    return $this->response_service->errorMessage(
+                        message: 'Old password is required to set a new password.',
+                        code: 422
+                    );
+                }
+
+                if (!Hash::check($validated['old_password'], $user->password)) {
+                    return $this->response_service->errorMessage(
+                        message: 'Old password is incorrect.',
+                        code: 422
+                    );
+                }
+
+                $user->password = Hash::make($validated['password']);
+            }
 
             $user->save();
 
             return $this->response_service->successMessage(
-                data: [
-                    'user' => $user->fresh(),
-                ],
+                data: ['user' => $user->fresh()],
                 message: 'Profile updated successfully.',
                 code: 200
             );
