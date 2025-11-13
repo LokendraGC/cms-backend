@@ -13,5 +13,5 @@ class CategoryMeta extends Model
 
     protected $fillable = ['category_id', 'meta_key', 'meta_value'];
 
-    protected $timestamps = false;
+    public $timestamps = false;
 }
