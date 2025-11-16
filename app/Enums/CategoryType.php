@@ -2,20 +2,28 @@
 
 namespace App\Enums;
 
-class CategoryType
+enum CategoryType: string
 {
-    const CATEGORY = 'category';
-    const AUTHOR = 'author';
-    const TAG = 'tag';
-    const DEVELOPMENT = 'development';
+    case CATEGORY = 'category';
+    case AUTHOR = 'author';
+    case TAG = 'tag';
+    case NAV_MENU = 'nav_menu';
+    case OUR_TEAM = 'our_team';
+    case PROJECT_TYPE = 'project_type';
+    case PROJECT_STATUS = 'project_status';
 
-    public static function toArray()
+    public static function toArray(): array
     {
-        return [
-            self::CATEGORY,
-            self::AUTHOR,
-            self::TAG,
-            self::DEVELOPMENT,
-        ];
+        return array_column(self::cases(), 'value');
+    }
+
+    public static function values(): array
+    {
+        return self::toArray();
+    }
+
+    public static function isValid(string $type): bool
+    {
+        return !empty(self::tryFrom($type));
     }
 }

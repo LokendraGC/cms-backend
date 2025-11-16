@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\RolesController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
@@ -28,6 +30,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Roles
     Route::apiResource('roles', RolesController::class)->except(['create', 'edit']);
+
+    // Caetegories
+    Route::apiResource('category', CategoryController::class);
+
+    // posts
+    Route::apiResource('post', PostController::class);
 
     // Permissions
     Route::get('/permissions', [PermissionController::class, 'index']);

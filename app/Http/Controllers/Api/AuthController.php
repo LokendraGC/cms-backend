@@ -161,11 +161,9 @@ class AuthController extends Controller
 
             $validated = $request->validated();
 
-            // ✅ Basic info update
             $user->name = $validated['name'] ?? $user->name;
             $user->email = $validated['email'] ?? $user->email;
 
-            // ✅ Remove avatar if requested
             if ($request->has('remove_avatar') && $request->remove_avatar == '1') {
                 if ($user->avatar && \Storage::disk('public')->exists($user->avatar)) {
                     \Storage::disk('public')->delete($user->avatar);
@@ -173,7 +171,6 @@ class AuthController extends Controller
                 $user->avatar = null;
             }
 
-            // ✅ Handle new avatar upload
             if ($request->hasFile('avatar')) {
                 if ($user->avatar && \Storage::disk('public')->exists($user->avatar)) {
                     \Storage::disk('public')->delete($user->avatar);
@@ -183,7 +180,6 @@ class AuthController extends Controller
                 $user->avatar = $path;
             }
 
-            // ✅ Handle password change (only if provided)
             if (!empty($validated['password'])) {
                 if (empty($validated['old_password'])) {
                     return $this->response_service->errorMessage(
