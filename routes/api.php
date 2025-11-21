@@ -34,6 +34,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Caetegories
     Route::apiResource('category', CategoryController::class);
 
+    // for re-order
+    Route::post('category/reorder', [CategoryController::class, 'reorder']);
+    Route::post('post/reorder', [PostController::class, 'reorder']);
+
     // posts
     Route::apiResource('post', PostController::class);
 

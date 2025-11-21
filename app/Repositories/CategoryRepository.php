@@ -4,7 +4,9 @@ namespace App\Repositories;
 
 use App\Models\Category;
 use App\Enums\CategoryType;
+use App\Models\Position;
 use App\Traits\SlugGenerateTrait;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CategoryRepository
@@ -40,9 +42,47 @@ class CategoryRepository
         return true;
     }
 
+    public function getCategoryById($id)
+    {
+        return Category::findOrFail($id);
+    }
+
+    public function deleteCategory($id)
+    {
+        try {
+            DB::transaction(function () use ($id) {
+                $category = Category::find($id);
+
+                if (!$category) {
+                    throw new \Exception('Category not found');
+                }
+
+                // Delete from positions table
+                Position::where('positionable_id', $id)
+                    ->where('positionable_type', 'App\Models\Category')
+                    ->delete();
+
+                // Delete the category
+                $category->delete();
+            });
+
+            return true;
+        } catch (\Exception $e) {
+            throw new \Exception('Failed to delete category: ' . $e->getMessage());
+        }
+    }
+
     public function getCategoryByType($type)
     {
         return Category::where('type', $type)->get();
+    }
+
+    public function getCategoriesOrderedByPosition($type)
+    {
+        return Category::where('type', $type)
+            ->orderBy('position', 'asc')
+            ->orderBy('created_at', 'desc')
+            ->get();
     }
 
     public function createCategory($request, $type)
@@ -75,18 +115,6 @@ class CategoryRepository
         ]);
 
         return ['status' => $status, 'category' => $category];
-    }
-
-    // make post type base64_encode
-    public function encodeType($type)
-    {
-        return base64_encode($type);
-    }
-
-    // make post type base64_decode
-    public function decodeType($type)
-    {
-        return base64_decode($type);
     }
 
     public function getMetaDatas($payload)

@@ -3,14 +3,17 @@
 namespace App\Services\Api;
 
 use App\Repositories\PostRepository;
+use App\Repositories\ReOrderRepository;
 
 class PostService
 {
     protected $repo;
+    protected $reorder_repo;
 
-    public function __construct(PostRepository $repo)
+    public function __construct(PostRepository $repo, ReOrderRepository $reorder_repo)
     {
         $this->repo = $repo;
+        $this->reorder_repo = $reorder_repo;
     }
 
     public function decodeType($type)
@@ -52,5 +55,14 @@ class PostService
     public function storeMetaData($payload, $request)
     {
         return $this->repo->storeMetaData($payload, $request);
+    }
+
+    public function reorderPosts(array $postIds)
+    {
+        try {
+            return $this->reorder_repo->reorderItems($postIds, 'App\Models\Post');
+        } catch (\Exception $e) {
+            throw new \Exception('Failed to reorder posts: ' . $e->getMessage());
+        }
     }
 }

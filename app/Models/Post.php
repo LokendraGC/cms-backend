@@ -8,11 +8,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\PostMeta;
 use App\Models\User;
 use App\Models\Comment;
-
+use App\Traits\HasPosition;
 
 class Post extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes,HasPosition;
 
     protected $fillable = ['user_id', 'post_title', 'slug', 'post_content', 'post_excerpt', 'post_status', 'post_parent', 'post_type', 'comment_status', 'menu_order', 'post_password'];
 
