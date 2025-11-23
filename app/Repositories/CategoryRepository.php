@@ -8,6 +8,7 @@ use App\Models\Position;
 use App\Traits\SlugGenerateTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\CategoryMeta;
 
 class CategoryRepository
 {
@@ -47,30 +48,33 @@ class CategoryRepository
         return Category::findOrFail($id);
     }
 
-    public function deleteCategory($id)
-    {
-        try {
-            DB::transaction(function () use ($id) {
-                $category = Category::find($id);
+public function deleteCategory($id)
+{
+    try {
+        DB::transaction(function () use ($id) {
+            $category = Category::find($id);
 
-                if (!$category) {
-                    throw new \Exception('Category not found');
-                }
+            if (!$category) {
+                throw new \Exception('Category not found');
+            }
 
-                // Delete from positions table
-                Position::where('positionable_id', $id)
-                    ->where('positionable_type', 'App\Models\Category')
-                    ->delete();
+            // Delete from positions table
+            Position::where('positionable_id', $id)
+                ->where('positionable_type', 'App\Models\Category')
+                ->delete();
 
-                // Delete the category
-                $category->delete();
-            });
+            // Delete from category_metas table
+            CategoryMeta::where('category_id', $id)->delete();
 
-            return true;
-        } catch (\Exception $e) {
-            throw new \Exception('Failed to delete category: ' . $e->getMessage());
-        }
+            // Delete the category
+            $category->delete();
+        });
+
+        return true;
+    } catch (\Exception $e) {
+        throw new \Exception('Failed to delete category: ' . $e->getMessage());
     }
+}
 
     public function getCategoryByType($type)
     {
@@ -85,21 +89,23 @@ class CategoryRepository
             ->get();
     }
 
-    public function createCategory($request, $type)
+    public function createCategoryWithMeta($request, $type)
     {
-        $model = new Category();
+        return DB::transaction(function () use ($request, $type) {
+            // Create category
+            $category = Category::create([
+                'name' => $request->name,
+                'slug' => $request->slug,
+                'parent' => $request->parent ?? 0,
+                'type' => $type,
+                'description' => $request->description ?? null,
+                'position' => Category::where('type', $type)->max('position') + 1,
+            ]);
 
-        $cat = Category::create([
-            'name' => $request->name,
-            'slug' => $this->createSlug($request->name, $request->slug, $model),
-            'type' => $type,
-            'description' => isset($request->description) ?  $request->description : NULL,
-            'parent' => isset($request->parent) ?  $request->parent : 0,
-            'menu_order' => isset($request->menu_order) ?  $request->menu_order : 0,
-        ]);
-
-        return $cat;
+            return $category;
+        });
     }
+
 
     public function updateCategory($request, $payload, $type)
     {
@@ -117,9 +123,12 @@ class CategoryRepository
         return ['status' => $status, 'category' => $category];
     }
 
-    public function getMetaDatas($payload)
+    public function getMetaDatas($category)
     {
-        return $payload->categoryMeta->pluck('meta_value', 'meta_key')->toArray();
+        return CategoryMeta::where('category_id', $category->id)
+            ->get()
+            ->pluck('meta_value', 'meta_key')
+            ->toArray();
     }
 
     public function storeMetaData($payload, $request)
@@ -137,10 +146,54 @@ class CategoryRepository
     // update or create category meta
     public function updateOrCreateMeta($category, $key, $value)
     {
-        $category->categoryMeta()->updateOrInsert(
-            ['category_id' => $category->id, 'meta_key' => $key],
-            ['meta_value' => $value]
+        if ($value === null) {
+            // Delete if value is null
+            CategoryMeta::where('category_id', $category->id)
+                ->where('meta_key', $key)
+                ->delete();
+            return;
+        }
+
+        CategoryMeta::updateOrCreate(
+            [
+                'category_id' => $category->id,
+                'meta_key' => $key
+            ],
+            [
+                'meta_value' => $value
+            ]
         );
+    }
+
+
+    public function getCategoriesWithMeta($type)
+    {
+        return Category::with(['categoryMeta', 'position']) // Use your actual relationship names
+            ->where('type', $type)
+            ->orderBy('position', 'asc') // This uses the position column in categories table
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($category) {
+                // Get parent name
+                $parentName = null;
+                if ($category->parent) {
+                    $parentCategory = Category::find($category->parent);
+                    $parentName = $parentCategory ? $parentCategory->name : null;
+                }
+
+                return [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'slug' => $category->slug,
+                    'parent' => $category->parent,
+                    'parent_name' => $parentName,
+                    'type' => $category->type,
+                    'position' => $category->position, // From categories table
+                    'created_at' => $category->created_at,
+                    'updated_at' => $category->updated_at,
+                    'meta' => $category->categoryMeta->pluck('meta_value', 'meta_key')->toArray()
+                ];
+            });
     }
 
     // restore posts

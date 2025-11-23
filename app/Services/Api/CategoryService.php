@@ -3,44 +3,57 @@
 namespace App\Services\Api;
 
 use App\Enums\CategoryType;
+use App\Repositories\CategoryMetaRepository;
 use App\Repositories\CategoryRepository;
 use App\Repositories\ReOrderRepository;
+use Exception;
+use App\Models\Category;
+use Illuminate\Support\Facades\DB;
 
 class CategoryService
 {
     protected $repo;
     protected $reorder_repo;
+    protected $metaRepo;
 
-    public function __construct(CategoryRepository $repo, ReOrderRepository $reorder_repo)
+    public function __construct(CategoryRepository $repo, ReOrderRepository $reorder_repo, CategoryMetaRepository $metaRepo)
     {
         $this->repo = $repo;
         $this->reorder_repo = $reorder_repo;
+        $this->metaRepo = $metaRepo;
     }
 
-    public function store($request, $type = null)
+    public function store($request, $type)
     {
-        // Default to the generic category type if nothing was supplied
-        $type = $type ?? CategoryType::CATEGORY->value;
+        try {
+            // Create category
+            $category = $this->repo->createCategoryWithMeta($request, $type);
 
-        $this->repo->checkCategoryTypeExists($type);
+            // Process and save meta data - ONLY if metaRepo exists
+            if (isset($this->metaRepo)) {
+                $metaDatas = $this->metaRepo->processMetaData($category, $request);
 
-        // Use the decoded type for category creation
-        $category = $this->repo->createCategory($request, $type);
+                foreach ($metaDatas as $key => $value) {
+                    $this->repo->updateOrCreateMeta($category, $key, $value);
+                }
+            }
 
-        $this->repo->storeMetaData($category, $request);
-
-        // Fix method name - use updateOrCreateMeta instead of createOrUpdateMeta
-        $this->repo->updateOrCreateMeta($category, 'seo_title', $request->seo_title ?? null);
-        $this->repo->updateOrCreateMeta($category, 'seo_description', $request->seo_description ?? null);
-
-        return $category;
+            return true;
+        } catch (Exception $e) {
+            throw new Exception('Failed to create category: ' . $e->getMessage());
+        }
     }
+
 
     public function getCategoryByType($type)
     {
         return $this->repo->getCategoryByType($type);
     }
 
+    public function getCategoriesWithMeta($type)
+    {
+        return $this->repo->getCategoriesWithMeta($type);
+    }
 
     public function getCategoryByTypeOrdered($type)
     {

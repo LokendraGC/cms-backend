@@ -23,12 +23,12 @@ class CategoryController extends Controller
     /**
      * Display a listing of the resource.
      */
+
     public function index(Request $request)
     {
         $type = $request->query('type', 'category');
 
         try {
-            // $data = $this->category_service->getCategoryByType($type);
             $data = $this->category_service->getCategoryByTypeOrdered($type);
 
             return $this->response_service->successMessage(
@@ -38,7 +38,7 @@ class CategoryController extends Controller
             );
         } catch (\Exception $err) {
             return $this->response_service->errorMessage(
-                message: 'Error fetching categories: ' . $err->getMessage(),
+                message: 'Error fetching categories: ' . $e->getMessage(),
                 code: 500
             );
         }
@@ -58,8 +58,6 @@ class CategoryController extends Controller
      */
     public function store(CategoryRequest $request)
     {
-        $validated = $request->validated();
-
         try {
             $this->category_service->store($request, $request->type);
 
